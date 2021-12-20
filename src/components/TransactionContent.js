@@ -3,13 +3,18 @@ import Pagination from './Pagination';
 import Report from './Report';
 import TransactionList from './TransactionList';
 
-function TransactionContent() {
+function TransactionContent(props) {
+  const { transactions, deleteTransaction, selectTransaction } = props;
   return (
     <>
-      <Report />
+      <Report transactions={transactions} />
       <FilterBar />
       <Pagination />
-      <TransactionList />
+      <TransactionList
+        transactions={transactions}
+        deleteTransaction={deleteTransaction}
+        selectTransaction={selectTransaction}
+      />
     </>
   );
 }
