@@ -3,18 +3,17 @@ import validator from 'validator';
 import { useState, useEffect } from 'react';
 
 function TransactionForm(props) {
-  const { addTransaction, closeForm } = props;
+  const { addTransaction, editingTransaction, updateTransaction } = props;
   const [input, setInput] = useState({
     type: 'EXPENSE',
     payee: '',
-    category: '',
+    categoryId: '',
     amount: '',
     date: '',
     comment: ''
   });
 
   const [error, setError] = useState({});
-
   const [expenses, setExpenses] = useState([]);
   const [incomes, setIncomes] = useState([]);
 
@@ -25,9 +24,24 @@ function TransactionForm(props) {
       );
       setExpenses(newExpenses);
       setIncomes(res.data.categories.filter(item => item.type === 'INCOME'));
-      setInput(prev => ({ ...prev, category: newExpenses[0].id }));
+      if (!editingTransaction) {
+        setInput(prev => ({ ...prev, categoryId: newExpenses[0].id }));
+      }
     });
   }, []);
+
+  useEffect(() => {
+    if (editingTransaction) {
+      setInput({
+        type: editingTransaction.category.type,
+        payee: editingTransaction.payee,
+        categoryId: editingTransaction.category.id,
+        amount: editingTransaction.amount,
+        date: editingTransaction.date.slice(0, 10),
+        comment: editingTransaction.comment
+      });
+    }
+  }, [editingTransaction]);
 
   const options =
     input.type === 'EXPENSE'
@@ -43,11 +57,14 @@ function TransactionForm(props) {
         ));
 
   const handleChangeInput = e => {
-    setInput(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const value = e.target.name === 'amount' ? +e.target.value : e.target.value;
+    setInput(prev => ({ ...prev, [e.target.name]: value }));
+
     if (e.target.name === 'type') {
       setInput(prev => ({
         ...prev,
-        category: e.target.value === 'EXPENSE' ? expenses[0].id : incomes[0].id
+        categoryId:
+          e.target.value === 'EXPENSE' ? expenses[0].id : incomes[0].id
       }));
     }
   };
@@ -60,9 +77,9 @@ function TransactionForm(props) {
       setError(prev => ({ ...prev, payee: '' }));
     }
 
-    if (validator.isEmpty(input.amount)) {
+    if (validator.isEmpty(input.amount + '')) {
       setError(prev => ({ ...prev, amount: 'Amount is required.' }));
-    } else if (!validator.isDecimal(input.amount) || input.amount <= 0) {
+    } else if (!validator.isDecimal(input.amount + '') || input.amount <= 0) {
       setError(prev => ({
         ...prev,
         amount: 'Amount must be numeric and greater than zero.'
@@ -80,14 +97,11 @@ function TransactionForm(props) {
       setError(prev => ({ ...prev, date: '' }));
     }
 
-    addTransaction({
-      categoryId: input.category,
-      payee: input.payee,
-      amount: +input.amount,
-      date: input.date,
-      comment: input.comment
-    });
-    closeForm();
+    if (editingTransaction) {
+      updateTransaction(editingTransaction.id, input);
+    } else {
+      addTransaction(input);
+    }
   };
 
   return (
@@ -99,7 +113,7 @@ function TransactionForm(props) {
             className="btn-check"
             id="cbx-expense"
             name="type"
-            defaultChecked
+            checked={input.type === 'EXPENSE'}
             value="EXPENSE"
             onChange={handleChangeInput}
           />
@@ -114,6 +128,7 @@ function TransactionForm(props) {
             className="btn-check"
             id="cbx-income"
             name="type"
+            checked={input.type === 'INCOME'}
             value="INCOME"
             onChange={handleChangeInput}
           />
@@ -139,8 +154,8 @@ function TransactionForm(props) {
           <label className="form-label">Category</label>
           <select
             className="form-select"
-            name="category"
-            value={input.category}
+            name="categoryId"
+            value={input.categoryId}
             onChange={handleChangeInput}
           >
             {options}
